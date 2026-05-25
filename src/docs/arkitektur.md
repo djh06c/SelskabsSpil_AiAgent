@@ -18,3 +18,4 @@ Svaret returneres til n8n og videre til brugeren.
 - Neo4j som graph database og vector database
 - SentenceTransformers til embeddings
 - Ollama/Hermes som lokal LLM
+- 
