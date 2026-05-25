@@ -1,0 +1,97 @@
+{
+  "name": "Vector RAG - Regelspørgsmål",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ask-rules",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "5f507c50-e504-41fd-9f54-381e2a77ad50",
+      "name": "Webhook",
+      "webhookId": "fd788b98-8aa3-4fb7-88bf-ac40f67804d9"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8000/ask-rules",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "question",
+              "value": "={{ $json.body.question }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        208,
+        0
+      ],
+      "id": "fade5767-e499-4dc6-889d-c58ba42b06f1",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"question\": {{ JSON.stringify($json.question) }},\n  \"answer\": {{ JSON.stringify($json.answer) }},\n  \"game\": {{ JSON.stringify($json.source.game) }},\n  \"document\": {{ JSON.stringify($json.source.document) }},\n  \"score\": {{ $json.source.score }}\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        416,
+        0
+      ],
+      "id": "c6e0b66e-da78-480b-8c81-5ae693a8723e",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "6cf65d35-9409-465f-a60a-d384d1a630fc",
+  "meta": {
+    "instanceId": "9223ab69e1fd0c201988488fc885a2e0f3486dd7f1911c1c7d345ec2aa97c24b"
+  },
+  "id": "21KFZFxEDHUhHx1J",
+  "tags": []
+}
