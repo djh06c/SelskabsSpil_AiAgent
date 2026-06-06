@@ -1,126 +1,242 @@
 <!DOCTYPE html>
 <html lang="da">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Selskabsspils Agent</title>
+
   <style>
     body {
       font-family: Arial, sans-serif;
-      max-width: 800px;
-      margin: 40px auto;
-      padding: 20px;
-      background-color: #f5f5f5;
+      background: #f4f4f4;
+      margin: 0;
+      padding: 0;
     }
 
-    h1 {
+    header {
+      background: #222;
+      color: white;
+      padding: 24px;
       text-align: center;
     }
 
-    .box {
-      background: white;
+    main {
+      max-width: 900px;
+      margin: 30px auto;
       padding: 20px;
+    }
+
+    .card {
+      background: white;
+      padding: 24px;
+      margin-bottom: 24px;
       border-radius: 10px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+    }
+
+    h1, h2 {
+      margin-top: 0;
     }
 
     textarea {
       width: 100%;
-      height: 100px;
+      min-height: 90px;
+      padding: 12px;
       font-size: 16px;
-      padding: 10px;
       box-sizing: border-box;
+      resize: vertical;
+      border: 1px solid #ccc;
+      border-radius: 8px;
     }
 
     button {
-      margin-top: 10px;
-      padding: 10px 20px;
+      margin-top: 12px;
+      padding: 12px 18px;
       font-size: 16px;
+      border: none;
+      border-radius: 8px;
+      background: #222;
+      color: white;
       cursor: pointer;
     }
 
-    #answer {
-      margin-top: 20px;
-      padding: 15px;
-      background-color: #eef2ff;
-      border-radius: 8px;
-      white-space: pre-wrap;
-      min-height: 80px;
+    button:hover {
+      background: #444;
     }
 
-    .examples button {
-      margin-right: 8px;
-      margin-bottom: 8px;
+    button:disabled {
+      background: #888;
+      cursor: not-allowed;
+    }
+
+    .answer {
+      margin-top: 18px;
+      padding: 16px;
+      background: #f0f0f0;
+      border-radius: 8px;
+      white-space: pre-wrap;
+      line-height: 1.5;
+    }
+
+    .hint {
+      color: #555;
       font-size: 14px;
+      margin-top: 6px;
+    }
+
+    .error {
+      background: #ffe0e0;
+      color: #7a0000;
     }
   </style>
 </head>
+
 <body>
+  <header>
+    <h1>Selskabsspils Agent</h1>
+    <p>Spørg om regler eller få anbefalet et spil ud fra det udstyr, I har.</p>
+  </header>
 
-<div class="box">
-  <h1>Selskabsspils Agent</h1>
+  <main>
+    <section class="card">
+      <h2>Spørg om regler</h2>
+      <p class="hint">Eksempel: Hvordan spiller man Meyer?</p>
 
-  <p>Stil et spørgsmål om Meyer, Fisk, Vandfald, Beer Pong eller Snyd.</p>
+      <textarea id="rulesQuestion" placeholder="Skriv dit regelspørgsmål her..."></textarea>
+      <br />
+      <button id="askRulesButton" onclick="askRules()">Spørg agenten</button>
 
-  <div class="examples">
-    <button onclick="setQuestion('Hvordan spiller man Meyer?')">Meyer</button>
-    <button onclick="setQuestion('Hvilket spil kan vi spille med kort?')">Kortspil</button>
-    <button onclick="setQuestion('Hvad skal man bruge til Beer Pong?')">Beer Pong</button>
-    <button onclick="setQuestion('Hvad er reglerne i Snyd?')">Snyd</button>
-  </div>
+      <div id="rulesAnswer" class="answer" style="display: none;"></div>
+    </section>
 
-  <textarea id="question" placeholder="Skriv dit spørgsmål her..."></textarea>
+    <section class="card">
+      <h2>Få anbefalet et spil</h2>
+      <p class="hint">Eksempel: Vi har kort. Hvilket spil kan vi spille?</p>
 
-  <br>
+      <textarea id="recommendQuestion" placeholder="Skriv hvad I har af udstyr..."></textarea>
+      <br />
+      <button id="recommendButton" onclick="recommendGames()">Få anbefaling</button>
 
-  <button onclick="askAgent()">Spørg agenten</button>
+      <div id="recommendAnswer" class="answer" style="display: none;"></div>
+    </section>
+  </main>
 
-  <div id="answer">Svaret vises her...</div>
-</div>
+  <script>
+    const ASK_RULES_URL = "http://localhost:5678/webhook/ask-rules";
+    const RECOMMEND_GAMES_URL = "http://localhost:5678/webhook/recommend-games";
 
-<script>
-  function setQuestion(text) {
-    document.getElementById("question").value = text;
-  }
+    async function askRules() {
+      const question = document.getElementById("rulesQuestion").value.trim();
+      const answerBox = document.getElementById("rulesAnswer");
+      const button = document.getElementById("askRulesButton");
 
-  async function askAgent() {
-    const question = document.getElementById("question").value;
-    const answerBox = document.getElementById("answer");
-
-    if (!question.trim()) {
-      answerBox.textContent = "Skriv et spørgsmål først.";
-      return;
-    }
-
-    answerBox.textContent = "Henter svar...";
-
-    try {
-      const response = await fetch("http://localhost:8000/ask", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json; charset=utf-8"
-        },
-        body: JSON.stringify({
-          question: question
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error("Serveren svarede med status: " + response.status);
+      if (!question) {
+        showAnswer(answerBox, "Skriv et spørgsmål først.", true);
+        return;
       }
 
-      const data = await response.json();
+      button.disabled = true;
+      showAnswer(answerBox, "Finder svar...", false);
 
-      answerBox.textContent =
-        data.answer ||
-        data.response ||
-        data.result ||
-        JSON.stringify(data, null, 2);
+      try {
+        const response = await fetch(ASK_RULES_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ question })
+        });
 
-    } catch (error) {
-      answerBox.textContent = "Der skete en fejl:\n" + error.message;
+        if (!response.ok) {
+          throw new Error("Serveren svarede med status " + response.status);
+        }
+
+        const data = await response.json();
+        const answer = formatRulesResponse(data);
+
+        showAnswer(answerBox, answer, false);
+      } catch (error) {
+        showAnswer(answerBox, "Der opstod en fejl: " + error.message, true);
+      } finally {
+        button.disabled = false;
+      }
     }
-  }
-</script>
 
+    async function recommendGames() {
+      const question = document.getElementById("recommendQuestion").value.trim();
+      const answerBox = document.getElementById("recommendAnswer");
+      const button = document.getElementById("recommendButton");
+
+      if (!question) {
+        showAnswer(answerBox, "Skriv hvad I har af udstyr først.", true);
+        return;
+      }
+
+      button.disabled = true;
+      showAnswer(answerBox, "Finder anbefalinger...", false);
+
+      try {
+        const response = await fetch(RECOMMEND_GAMES_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ question })
+        });
+
+        if (!response.ok) {
+          throw new Error("Serveren svarede med status " + response.status);
+        }
+
+        const data = await response.json();
+        const answer = formatRecommendResponse(data);
+
+        showAnswer(answerBox, answer, false);
+      } catch (error) {
+        showAnswer(answerBox, "Der opstod en fejl: " + error.message, true);
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    function formatRulesResponse(data) {
+      if (data.answer) {
+        return data.answer;
+      }
+
+      if (Array.isArray(data) && data[0]?.answer) {
+        return data[0].answer;
+      }
+
+      return JSON.stringify(data, null, 2);
+    }
+
+    function formatRecommendResponse(data) {
+      const items = Array.isArray(data) ? data : data.games || data.data || [];
+
+      if (!Array.isArray(items) || items.length === 0) {
+        return "Jeg fandt ingen spil, der matcher det udstyr.";
+      }
+
+      return items.map(item => {
+        const spil = item.spil || item.game || item.name || "Ukendt spil";
+        const antalSpillere = item.antalSpillere || item.players || "Ukendt antal spillere";
+        const formaal = item.formaal || item.purpose || "Intet formål angivet";
+
+        return `${spil}\nAntal spillere: ${antalSpillere}\nFormål: ${formaal}`;
+      }).join("\n\n");
+    }
+
+    function showAnswer(element, text, isError) {
+      element.style.display = "block";
+      element.textContent = text;
+
+      if (isError) {
+        element.classList.add("error");
+      } else {
+        element.classList.remove("error");
+      }
+    }
+  </script>
 </body>
 </html>
